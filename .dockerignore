@@ -1,0 +1,13 @@
+*.env
+
+
+chroma_db/
+.venv/
+.git/
+.gitignore
+.dockerignore
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
