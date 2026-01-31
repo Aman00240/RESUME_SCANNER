@@ -20,11 +20,13 @@ class Resume(BaseModel):
     )
 
     years_experience_required: int = Field(
-        description="The minimum years of experience mentioned in the Job Description, If not mentioned, use 0."
+        ge=0,
+        description="The minimum years of experience mentioned in the Job Description, If not mentioned, use 0.",
     )
 
     years_experience_actual: int = Field(
-        description="The candidate's total relevant years of experiance found in the resume"
+        ge=0,
+        description="The candidate's total relevant years of experiance found in the resume",
     )
 
     recommendation: Recommendation = Field(
