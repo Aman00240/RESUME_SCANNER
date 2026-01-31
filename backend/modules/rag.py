@@ -19,9 +19,9 @@ ch_client = chromadb.PersistentClient(path=DB_DIR)
 collection = ch_client.get_or_create_collection(name="resume_date")
 
 
-def extract_text_from_pdf(pdf_path: str) -> str:
+def extract_text_from_pdf(file_obj) -> str:
     try:
-        render = PdfReader(pdf_path)
+        render = PdfReader(file_obj)
         full_text = ""
 
         for page in render.pages:
@@ -34,26 +34,35 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         return ""
 
 
-def add_to_chromadb(file_path: str):
-    try:
-        existing_ids = collection.get()["ids"]
-        if existing_ids:
-            collection.delete(ids=existing_ids)
+def add_to_chromadb(file_obj, session_id: str):
+    raw_text = extract_text_from_pdf(file_obj)
 
+    if not raw_text:
+        return False
+
+    try:
+        collection.delete(where={"session_id": session_id})
     except Exception:
         pass
 
-    raw_text = extract_text_from_pdf(file_path)
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = splitter.split_text(raw_text)
 
-    collection.add(documents=chunks, ids=[f"id_{i}" for i in range(len(chunks))])
+    metadatas = [{"session_id": session_id} for _ in chunks]
+
+    collection.add(
+        documents=chunks,
+        metadatas=metadatas,  # type: ignore
+        ids=[f"{session_id}_chunk_{i}" for i in range(len(chunks))],
+    )
 
     return True
 
 
-def analyze_resume(job_description: str) -> Resume:
-    results = collection.query(query_texts=[job_description], n_results=5)
+def analyze_resume(job_description: str, session_id: str) -> Resume:
+    results = collection.query(
+        query_texts=[job_description], n_results=5, where={"session_id": session_id}
+    )
 
     try:
         assert results["documents"] is not None

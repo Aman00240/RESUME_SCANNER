@@ -71,3 +71,8 @@ class Resume(BaseModel):
             }
         }
     }
+
+
+class JobQuery(BaseModel):
+    job_description: str
+    session_id: str
