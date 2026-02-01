@@ -7,3 +7,5 @@ pypdf
 langchain-text-splitters
 python-dotenv
 pydantic-settings
+instructor
+fastembed

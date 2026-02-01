@@ -8,9 +8,8 @@ COPY requirements.txt .
 
 RUN uv pip install --system --no-cache-dir -r requirements.txt
 
-RUN python -c "from chromadb.utils import embedding_functions; \
-    embedding_functions.DefaultEmbeddingFunction()"
-    
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
+
 COPY . .
 
 CMD ["uvicorn","backend.main:app","--host","0.0.0.0","--port","8000"]

@@ -7,6 +7,21 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from backend.config import settings
 from backend.schemas import Resume
 
+from chromadb import Documents, EmbeddingFunction, Embeddings
+from fastembed import TextEmbedding
+
+
+class CustomFastEmbedEF(EmbeddingFunction):
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+        self.model = TextEmbedding(model_name=model_name)
+
+    def __call__(self, input: Documents) -> Embeddings:
+        embeddings_generator = self.model.embed(input)
+
+        return [e.tolist() for e in embeddings_generator]
+
+
+ef = CustomFastEmbedEF()
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(CURRENT_DIR, "chroma_db")
@@ -16,7 +31,10 @@ instructor_client = instructor.from_groq(groq_client)
 
 ch_client = chromadb.PersistentClient(path=DB_DIR)
 
-collection = ch_client.get_or_create_collection(name="resume_date")
+collection = ch_client.get_or_create_collection(
+    name="resume_date",
+    embedding_function=ef,  # type: ignore
+)
 
 
 def extract_text_from_pdf(file_obj) -> str:

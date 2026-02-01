@@ -7,5 +7,21 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+      - ./backend/modules/chroma_db:/app/backend/modules/chroma_db
     env_file:
       - .env
+  
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: resume_frontend
+    command: streamlit run frontend/ui.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - BACKEND_URL=http://backend:8000/api
+    depends_on:
+      - backend
