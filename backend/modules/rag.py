@@ -52,34 +52,34 @@ def extract_text_from_pdf(file_obj) -> str:
         return ""
 
 
-def add_to_chromadb(file_obj, session_id: str):
+def add_to_chromadb(file_obj, unique_resume_id: str):
     raw_text = extract_text_from_pdf(file_obj)
-
     if not raw_text:
         return False
 
-    try:
-        collection.delete(where={"session_id": session_id})
-    except Exception:
-        pass
+    session_id = unique_resume_id.split("||")[0]
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = splitter.split_text(raw_text)
 
-    metadatas = [{"session_id": session_id} for _ in chunks]
+    metadatas = [
+        {"session_id": session_id, "resume_id": unique_resume_id} for _ in chunks
+    ]
 
     collection.add(
         documents=chunks,
         metadatas=metadatas,  # type: ignore
-        ids=[f"{session_id}_chunk_{i}" for i in range(len(chunks))],
+        ids=[f"{unique_resume_id}_chunk_{i}" for i in range(len(chunks))],
     )
 
     return True
 
 
-def analyze_resume(job_description: str, session_id: str) -> Resume:
+def analyze_resume(job_description: str, unique_resume_id: str) -> Resume:
     results = collection.query(
-        query_texts=[job_description], n_results=5, where={"session_id": session_id}
+        query_texts=[job_description],
+        n_results=5,
+        where={"resume_id": unique_resume_id},
     )
 
     try:

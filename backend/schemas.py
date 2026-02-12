@@ -26,7 +26,13 @@ class Resume(BaseModel):
 
     years_experience_actual: int = Field(
         ge=0,
-        description="The candidate's total relevant years of experiance found in the resume",
+        description=(
+            "The total years of work experience that is DIRECTLY RELEVANT to the Job Description. "
+            "1. Compare every role in the Resume against the skills in the Job Description. "
+            "2. If a role (e.g., 'Sales Associate') is unrelated to the target job (e.g., 'Python Engineer'), DO NOT count its duration. "
+            "3. Strictly exclude student clubs, university leadership roles, and unpaid volunteering. "
+            "4. Count relevant Internships as valid experience."
+        ),
     )
 
     recommendation: Recommendation = Field(
@@ -71,6 +77,15 @@ class Resume(BaseModel):
             }
         }
     }
+
+
+class AnalysisItem(BaseModel):
+    filename: str
+    analysis: Resume
+
+
+class BatchAnalysisResponse(BaseModel):
+    results: list[AnalysisItem]
 
 
 class JobQuery(BaseModel):
