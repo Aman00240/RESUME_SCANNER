@@ -4,7 +4,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements_backend.txt .
 
 RUN uv pip install --system --no-cache-dir -r requirements.txt
 

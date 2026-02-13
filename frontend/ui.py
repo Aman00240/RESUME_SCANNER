@@ -4,8 +4,10 @@ import os
 import json
 import pandas as pd
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-
+if "BACKEND_URL" in st.secrets:
+    BACKEND_URL = st.secrets["BACKEND_URL"]
+else:
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 st.set_page_config(page_title="AI Resume Scanner", page_icon="📄", layout="wide")
 
 st.title(body="AI Resume Screening System")
