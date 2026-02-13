@@ -1,7 +1,8 @@
 import uuid
 from fastapi import APIRouter, HTTPException, File, UploadFile
 from backend.modules.rag import add_to_chromadb, analyze_resume, collection
-from backend.schemas import JobQuery, BatchAnalysisResponse
+from backend.schemas import JobQuery, BatchAnalysisResponse, ChatQuery, ChatResponse
+from backend.modules.rag import chat_with_resume_ai
 
 router = APIRouter()
 
@@ -66,4 +67,16 @@ def analyze_resume_endpoint(job_query: JobQuery):
 
     except Exception as e:
         print(f"Batch Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat", response_model=ChatResponse)
+def chat(query: ChatQuery):
+    try:
+        jd = query.job_description or ""
+
+        answer = chat_with_resume_ai(query.question, query.resume_id, jd)
+        return {"answer": answer}
+
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

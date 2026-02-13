@@ -9,6 +9,9 @@ class Recommendation(str, Enum):
 
 
 class Resume(BaseModel):
+    is_valid_job_description: bool = Field(
+        description="Check if the Job Description text is valid. If it is nonsense (e.g., 'hello', 'test'), too short, or lacks technical requirements, set this to False. Otherwise, True."
+    )
     matching_keywords: list[str] = Field(
         default_factory=list,
         description="Key skills from Job Description that the candidate definitely has in resume",
@@ -27,11 +30,12 @@ class Resume(BaseModel):
     years_experience_actual: int = Field(
         ge=0,
         description=(
-            "The total years of work experience that is DIRECTLY RELEVANT to the Job Description. "
-            "1. Compare every role in the Resume against the skills in the Job Description. "
-            "2. If a role (e.g., 'Sales Associate') is unrelated to the target job (e.g., 'Python Engineer'), DO NOT count its duration. "
-            "3. Strictly exclude student clubs, university leadership roles, and unpaid volunteering. "
-            "4. Count relevant Internships as valid experience."
+            "The total years of full-time professional employment. "
+            "CRITICAL RULES: "
+            "1. Only calculate duration from sections explicitly titled 'Experience', 'Work History', or 'Employment'. "
+            "2. ABSOLUTELY DO NOT count time from the 'Projects', 'Academic Projects', or 'Education' sections. "
+            "3. If the resume has no section titled 'Experience' or 'Employment', return 0. "
+            "4. Do not infer years based on skill level. If no dates of employment are listed, the value must be 0."
         ),
     )
 
@@ -53,6 +57,9 @@ class Resume(BaseModel):
     @computed_field
     @property
     def match_score(self) -> int:
+        if not self.is_valid_job_description:
+            return 0
+
         score = 100
 
         score -= len(self.missing_keywords) * 5
@@ -91,3 +98,13 @@ class BatchAnalysisResponse(BaseModel):
 class JobQuery(BaseModel):
     job_description: str
     session_id: str
+
+
+class ChatQuery(BaseModel):
+    resume_id: str
+    question: str
+    job_description: str | None = None
+
+
+class ChatResponse(BaseModel):
+    answer: str

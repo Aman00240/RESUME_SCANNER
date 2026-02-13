@@ -1,4 +1,3 @@
-import os
 import chromadb
 import instructor
 from groq import Groq
@@ -23,13 +22,11 @@ class CustomFastEmbedEF(EmbeddingFunction):
 
 ef = CustomFastEmbedEF()
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_DIR = os.path.join(CURRENT_DIR, "chroma_db")
 
 groq_client = Groq(api_key=settings.groq_key)
 instructor_client = instructor.from_groq(groq_client)
 
-ch_client = chromadb.PersistentClient(path=DB_DIR)
+ch_client = chromadb.Client()
 
 collection = ch_client.get_or_create_collection(
     name="resume_date",
@@ -58,12 +55,19 @@ def add_to_chromadb(file_obj, unique_resume_id: str):
         return False
 
     session_id = unique_resume_id.split("||")[0]
+    filename = unique_resume_id.split("||")[1]
+
+    try:
+        collection.delete(where={"filename": filename})
+    except Exception:
+        pass
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = splitter.split_text(raw_text)
 
     metadatas = [
-        {"session_id": session_id, "resume_id": unique_resume_id} for _ in chunks
+        {"session_id": session_id, "resume_id": unique_resume_id, "filename": filename}
+        for _ in chunks
     ]
 
     collection.add(
@@ -117,3 +121,53 @@ def analyze_resume(job_description: str, unique_resume_id: str) -> Resume:
         raise RuntimeError("Something went wrong with the AI service.")
 
     return resume_obj
+
+
+def chat_with_resume_ai(
+    question: str, unique_resume_id: str, job_description: str = " "
+) -> str:
+    results = collection.query(
+        query_texts=[question], n_results=5, where={"resume_id": unique_resume_id}
+    )
+
+    resume_context = ""
+
+    if results["documents"]:
+        resume_context = "\n\n".join(results["documents"][0])
+
+    if not resume_context:
+        return "I couldn't find any content for this resume to answer your question."
+
+    system_instruction = """
+    You are a helpful recruitment assistant. 
+    Answer the question based strictly on the candidate's resume context below, both are delemited by triple backticks.
+    If the answer is not in the resume, say "The resume does not mention this."
+    """
+    jd_context = ""
+    if job_description:
+        jd_context = f"Target Job Description:{job_description}\n\n"
+        system_instruction += " Answer the question considering the candidate's fit for the Target Job Description."
+
+    prompt = f"""
+    {system_instruction}
+    
+    {jd_context}
+    
+    RESUME CONTEXT:
+    {resume_context}
+    
+    QUESTION:
+    {question}
+    """
+    try:
+        response = instructor_client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model=settings.model,
+            response_model=None,
+            temperature=0.0,
+        )
+        return response.choices[0].message.content
+
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        return "Sorry, I encountered an error generating the answer."
