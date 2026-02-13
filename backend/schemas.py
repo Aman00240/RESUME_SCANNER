@@ -19,12 +19,23 @@ class Resume(BaseModel):
 
     missing_keywords: list[str] = Field(
         default_factory=list,
-        description="Critical skills (must-haves) from Job Description that are missing in resume",
+        description="Critical skills/tools from the Job Description that are missing in the resume. "
+        "List ONLY missing skills that are strictly MANDATORY and NOT satisfied by an alternative. "
+        "CRITICAL RULES FOR ACCURACY: "
+        "1. HANDLE 'OR' LOGIC: If the JD says 'Python, Java, OR Node.js', and the candidate has Python, do NOT list Java or Node.js as missing. The requirement is satisfied. "
+        "2. HANDLE EXAMPLES: If the JD lists examples (e.g., 'Databases like MySQL, MongoDB, PostgreSQL') and the candidate has ONE of them (e.g., PostgreSQL), the requirement is MET. Do NOT list the others. "
+        "3. IGNORE BROAD CATEGORIES: Do not list generic terms like 'Cloud Services' or 'Backend'. If they are missing Cloud, list the specific missing tool (e.g., 'AWS'). "
+        "4. DO NOT list a skill if the candidate has a valid industry equivalent (e.g., FastAPI instead of Django).",
     )
 
     years_experience_required: int = Field(
         ge=0,
-        description="The minimum years of experience mentioned in the Job Description, If not mentioned, use 0.",
+        description="The minimum years of experience mentioned in the Job Description. "
+        "CRITICAL RULE FOR RANGES: If a range is specified (e.g., '0-3 years', '1-5 years'), "
+        "you MUST extract the LOWER bound (the minimum number). "
+        "Example: '0-3 years' -> Return 0. "
+        "Example: '2+ years' -> Return 2. "
+        "If no experience is mentioned, return 0.",
     )
 
     years_experience_actual: int = Field(
@@ -60,14 +71,17 @@ class Resume(BaseModel):
         if not self.is_valid_job_description:
             return 0
 
+        if not self.matching_keywords and not self.missing_keywords:
+            return 0
+
         score = 100
 
-        score -= len(self.missing_keywords) * 5
+        score -= len(self.missing_keywords) * 4
 
         if self.years_experience_actual < self.years_experience_required:
             diff = self.years_experience_required - self.years_experience_actual
 
-            penalty = min(30, diff * 10)
+            penalty = min(50, diff * 10)
             score -= int(penalty)
 
         return max(0, score)

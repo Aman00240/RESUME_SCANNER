@@ -8,7 +8,7 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="AI Resume Scanner", page_icon="📄", layout="wide")
 
-st.title(body="📄 AI-Powered Resume Screening System")
+st.title(body="AI Resume Screening System")
 st.markdown("---")
 
 
