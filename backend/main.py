@@ -3,7 +3,7 @@ from backend.routers import analyze
 
 app = FastAPI()
 
-app.include_router(analyze.router, prefix="/api", tags=["Resume"])
+app.include_router(analyze.router, tags=["Resume"])
 
 
 @app.get("/")
