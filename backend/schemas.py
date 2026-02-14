@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
@@ -9,53 +9,51 @@ class Recommendation(str, Enum):
 
 
 class Resume(BaseModel):
-    is_valid_job_description: bool = Field(
-        description="Check if the Job Description text is valid. If it is nonsense (e.g., 'hello', 'test'), too short, or lacks technical requirements, set this to False. Otherwise, True."
-    )
     matching_keywords: list[str] = Field(
         default_factory=list,
-        description="Key skills from Job Description that the candidate definitely has in resume",
+        description="""
+        "List technical skills AND concepts that appear in BOTH JD and Resume."
+        """,
     )
 
     missing_keywords: list[str] = Field(
         default_factory=list,
-        description="Critical skills/tools from the Job Description that are missing in the resume. "
-        "List ONLY missing skills that are strictly MANDATORY and NOT satisfied by an alternative. "
-        "CRITICAL RULES FOR ACCURACY: "
-        "1. HANDLE 'OR' LOGIC: If the JD says 'Python, Java, OR Node.js', and the candidate has Python, do NOT list Java or Node.js as missing. The requirement is satisfied. "
-        "2. HANDLE EXAMPLES: If the JD lists examples (e.g., 'Databases like MySQL, MongoDB, PostgreSQL') and the candidate has ONE of them (e.g., PostgreSQL), the requirement is MET. Do NOT list the others. "
-        "3. IGNORE BROAD CATEGORIES: Do not list generic terms like 'Cloud Services' or 'Backend'. If they are missing Cloud, list the specific missing tool (e.g., 'AWS'). "
-        "4. DO NOT list a skill if the candidate has a valid industry equivalent (e.g., FastAPI instead of Django).",
+        description=(
+            "List key missing requirements. "
+            "Logic: If JD says 'A or B' and candidate has A, list neither. "
+            "Ignore nice-to-haves. If role mismatch, list the core missing domain "
+            "(e.g., 'Backend Development')."
+        ),
     )
 
     years_experience_required: int = Field(
         ge=0,
-        description="The minimum years of experience mentioned in the Job Description. "
-        "CRITICAL RULE FOR RANGES: If a range is specified (e.g., '0-3 years', '1-5 years'), "
-        "you MUST extract the LOWER bound (the minimum number). "
-        "Example: '0-3 years' -> Return 0. "
-        "Example: '2+ years' -> Return 2. "
-        "If no experience is mentioned, return 0.",
+        description="Min years in JD. Extract lower bound (e.g., '3-5' -> 3). Default 0.",
     )
 
     years_experience_actual: int = Field(
         ge=0,
         description=(
-            "The total years of full-time professional employment. "
-            "CRITICAL RULES: "
-            "1. Only calculate duration from sections explicitly titled 'Experience', 'Work History', or 'Employment'. "
-            "2. ABSOLUTELY DO NOT count time from the 'Projects', 'Academic Projects', or 'Education' sections. "
-            "3. If the resume has no section titled 'Experience' or 'Employment', return 0. "
-            "4. Do not infer years based on skill level. If no dates of employment are listed, the value must be 0."
+            "Total professional years. IMPORTANT: Must be a WHOLE NUMBER (Integer). If 0.75, use 1 or 0."
         ),
     )
 
     recommendation: Recommendation = Field(
-        description="The Final verdict on the candidate"
+        description=(
+            "Must be EXACTLY one of: 'Strong Match', 'Potential Match', or 'Reject'. Do not shorten."
+            "FINAL VERDICT LOGIC (Apply in order):"
+            "1. ROLE CHECK: If JD is 'Backend' and Candidate is 'Data Scientist' or 'Frontend', Verdict = REJECT (Fundamental Mismatch)."
+            "2. PRIMARY TECH: If Candidate misses the core language (e.g., JD requires Java, Candidate has Python), Verdict = REJECT."
+            "3. EXPERIENCE: If Candidate has < 50% of required years, Verdict = REJECT or POTENTIAL."
+            "4. POTENTIAL MATCH: Role is correct, Core Tech is present, but missing cloud/tools (e.g., knows FastAPI but not AWS/Kafka)."
+            "5. STRONG MATCH: Role is correct, Core Tech is perfect, and has most secondary tools."
+        )
     )
 
     profile_summary: str = Field(
-        description="A 2-3 sentence executive summary. Don't simply list experience; explain the decision. Example: 'Good Python skills, but rejected due to lack of required NLP experience.'"
+        description="""2-3 sentence executive decision logic. If Reject, explain why (e.g., Role Mismatch).
+            Eg: 'Good Python skills, but rejected due to lack of required NLP experience.'
+            """
     )
 
     @field_validator("matching_keywords", "missing_keywords", mode="before")
@@ -64,27 +62,6 @@ class Resume(BaseModel):
         if v is None:
             return []
         return v
-
-    @computed_field
-    @property
-    def match_score(self) -> int:
-        if not self.is_valid_job_description:
-            return 0
-
-        if not self.matching_keywords and not self.missing_keywords:
-            return 0
-
-        score = 100
-
-        score -= len(self.missing_keywords) * 4
-
-        if self.years_experience_actual < self.years_experience_required:
-            diff = self.years_experience_required - self.years_experience_actual
-
-            penalty = min(50, diff * 10)
-            score -= int(penalty)
-
-        return max(0, score)
 
     model_config = {
         "json_schema_extra": {

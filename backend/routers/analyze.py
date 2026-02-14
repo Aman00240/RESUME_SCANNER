@@ -50,19 +50,28 @@ def analyze_resume_endpoint(job_query: JobQuery):
         results_list = []
 
         for resume_id in unique_files:
-            filename = resume_id.split("||")[1]
+            try:
+                filename = resume_id.split("||")[1]
+            except IndexError:
+                filename = "Unknown_File"
 
             try:
                 analysis_obj = analyze_resume(job_query.job_description, resume_id)
-
                 results_list.append({"filename": filename, "analysis": analysis_obj})
 
             except Exception as inner_e:
                 print(f"Skipping {filename} due to error: {inner_e}")
                 continue
 
-        results_list.sort(key=lambda x: x["analysis"].match_score, reverse=True)
-
+        priority_map = {"Strong Match": 3, "Potential Match": 2, "Reject": 1}
+        results_list.sort(
+            key=lambda x: (
+                priority_map.get(x["analysis"].recommendation, 0),
+                len(x["analysis"].matching_keywords),
+                x["analysis"].years_experience_actual,
+            ),
+            reverse=True,
+        )
         return {"results": results_list}
 
     except Exception as e:

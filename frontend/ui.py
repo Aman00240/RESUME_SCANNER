@@ -4,10 +4,15 @@ import os
 import json
 import pandas as pd
 
-if "BACKEND_URL" in st.secrets:
-    BACKEND_URL = st.secrets["BACKEND_URL"]
-else:
+try:
+    if "BACKEND_URL" in st.secrets:
+        BACKEND_URL = st.secrets["BACKEND_URL"]
+    else:
+        BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+except FileNotFoundError:
     BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
 st.set_page_config(page_title="AI Resume Scanner", page_icon="📄", layout="wide")
 
 st.title(body="AI Resume Screening System")
@@ -43,9 +48,7 @@ with st.sidebar:
                     if response.status_code == 200:
                         data = response.json()
                         st.session_state.batch_id = data.get("batch_id")
-                        st.success(
-                            f"Uploaded {data['count']} resumes, Batch ID: {st.session_state.batch_id[:8]}..."
-                        )
+                        st.success(f"Uploaded {data['count']} resumes")
                     else:
                         st.error(f"Upload Failed {response.text}")
 
@@ -93,23 +96,16 @@ if st.session_state.analysis_results:
         table_data.append(
             {
                 "Candidate Name": item["filename"],
-                "Match Score": analysis["match_score"],
                 "Verdict": analysis["recommendation"],
                 "Years Exp": analysis["years_experience_actual"],
+                "Tech Match Count": len(analysis["matching_keywords"]),
                 "Missing Skills": ", ".join(analysis["missing_keywords"]),
             }
         )
 
     df = pd.read_json(json.dumps(table_data))
-    st.dataframe(
-        df,
-        column_config={
-            "Match Score": st.column_config.ProgressColumn(
-                format="%d%%", min_value=0, max_value=100
-            )
-        },
-        use_container_width=True,
-    )
+
+    st.dataframe(df, use_container_width=True)
 
     st.markdown("### 🔍 Detailed Breakdown")
 
@@ -118,38 +114,49 @@ if st.session_state.analysis_results:
         analysis = item["analysis"]
         resume_id = f"{st.session_state.batch_id}||{filename}"
 
-        with st.expander(f"📄 {filename} - {analysis['match_score']}% Match"):
+        verdict = analysis["recommendation"]
+
+        color = "gray"
+        if verdict == "Strong Match":
+            color = "green"
+        elif verdict == "Potential Match":
+            color = "orange"
+        elif verdict == "Reject":
+            color = "red"
+
+        with st.expander(f"📄 {filename} - {verdict}"):
+            st.markdown(f"### Verdict: :{color}[{verdict}]")
+
+            st.write(f"**Summary:** {analysis['profile_summary']}")
+
+            st.write("")
+
             c1, c2 = st.columns(2)
             with c1:
-                st.write(f"**Verdict:** {analysis['recommendation']}")
-                st.write(f"**Experience:** {analysis['years_experience_actual']} Years")
-            with c2:
-                st.write(f"**Summary:** {analysis['profile_summary']}")
+                st.write("✅ **Matching Skills**")
 
-            st.error(f"Missing: {', '.join(analysis['missing_keywords'])}")
-            st.success(f"Matching: {', '.join(analysis['matching_keywords'])}")
+                st.write(", ".join(analysis["matching_keywords"]))
+
+            with c2:
+                st.write("❌ **Missing Skills**")
+                if analysis["missing_keywords"]:
+                    st.write(", ".join(analysis["missing_keywords"]))
+
+                else:
+                    st.success("None! (All requirements met)")
 
             st.markdown("---")
+
             st.subheader("💬 Chat with Resume")
 
-            chat_container = st.container()
+            q_input = st.text_input(
+                "Ask a question:",
+                key=f"input_{filename}",
+                placeholder="e.g. Does he know SQL?",
+            )
 
-            with chat_container:
-                col_input, col_btn = st.columns([4, 1])
-
-                with col_input:
-                    q_input = st.text_input(
-                        "Ask a question:",
-                        key=f"input_{filename}",
-                        placeholder="e.g. Does he know SQL?",
-                    )
-
-                with col_btn:
-                    st.write("")
-                    st.write("")
-                    ask_click = st.button("Ask", key=f"btn_{filename}")
-
-                if ask_click and q_input:
+            if st.button("Ask", key=f"btn_{filename}"):
+                if q_input:
                     with st.spinner("Thinking..."):
                         try:
                             chat_payload = {
@@ -168,6 +175,5 @@ if st.session_state.analysis_results:
                         except Exception as e:
                             st.error(f"Conn Error: {e}")
 
-                # Show Answer from History
-                if filename in st.session_state.chat_history:
-                    st.info(f"🤖 **Answer:** {st.session_state.chat_history[filename]}")
+            if filename in st.session_state.chat_history:
+                st.info(f"**Answer:** {st.session_state.chat_history[filename]}")
