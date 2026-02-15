@@ -15,6 +15,11 @@ This program allows you to:
 
 * **Backend API Docs**: [[link](https://resume-scanner-0g25.onrender.com/docs)]
 
+<br>
+<p align="center">
+  <img src="assets/resume_scan.gif" alt="AI Resume Analyzer Demo" width="800" style="border-radius: 10px; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);">
+</p>
+<br>
 
 ## Features
 ### **1️⃣ Resume Upload (Batch Support)**
