@@ -103,9 +103,11 @@ if st.session_state.analysis_results:
             }
         )
 
-    df = pd.read_json(json.dumps(table_data))
-
-    st.dataframe(df, use_container_width=True)
+    if table_data:
+        df = pd.DataFrame(table_data)
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.warning("No data to display. Please try analyzing again.")
 
     st.markdown("### 🔍 Detailed Breakdown")
 
