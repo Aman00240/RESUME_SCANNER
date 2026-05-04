@@ -60,7 +60,7 @@ The system:
 ## Technical Stack
 - **Backend:** FastAPI (Python)
 - **Frontend:** Streamlit
-- **LLM Orchestration:** Instructor + Groq (llama-3.3-70b-versatile)
+- **LLM Orchestration:** Instructor + Groq (openai/gpt-oss-120b)
 - **Vector Database:** ChromaDB
 - **Embeddings:** FastEmbed (sentence-transformers/all-MiniLM-L6-v2)
 - **PDF Parsing:** PyPDF
